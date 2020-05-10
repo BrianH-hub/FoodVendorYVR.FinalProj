@@ -1,6 +1,6 @@
 ﻿import React, { Component } from 'react';
 import Pagination from './Pagination';
-const API = 'https://opendata.vancouver.ca/api/records/1.0/search/?dataset=food-vendors';
+const API = 'https://opendata.vancouver.ca/api/records/1.0/search/?dataset=food-vendors&rows=40';
 
 
 export class TestPage extends Component {
@@ -13,10 +13,11 @@ export class TestPage extends Component {
         fetch(API)
             .then(data => data.json())
             .then(data => {
-                console.log(data);
+                console.log(data.records);
                 this.setState({ foodVendors: data.records, loading: false});
             });
         this.onChangePage = this.onChangePage.bind(this);
+        
     }
 
     onChangePage(pageOfItems) {
@@ -26,7 +27,7 @@ export class TestPage extends Component {
 
 
     render() {
-
+        console.log(this.state.foodVendors)
         return (    
             <div>
                 {this.state.pageOfItems.map(vendor =>

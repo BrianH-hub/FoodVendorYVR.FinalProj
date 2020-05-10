@@ -1,34 +1,9 @@
 import React, { Component } from 'react';
-import { GoogleMap, withScriptjs, withGoogleMap, Marker } from "react-google-maps";
+
 import Pagination from './Pagination';
 
-function Map(props) {
-    return (
-        <GoogleMap
-            defaultZoom={15}
-            defaultCenter={{ lat: 49.2820, lng: -123.1171 }} >
-            {props.foodVendors.map(
-                vendor => (
-                    <Marker
-                        key={vendor.key}
-                        title={vendor.business_name}
-                        position={{ lat: vendor.latitude, lng: vendor.longitude }}
-                        onClick={() => props.markerClickHandler(vendor)} />
 
-                )
-            )}
-        </GoogleMap>
-    );
-}
-
-// withScript basically adds the required js to embed map in page
-
-// withGoogleMap(Map) pushes the result of the Map function above
-// into the embedded google map js container 
-const WrappedMap = withScriptjs(withGoogleMap(props => (Map(props))));
-
-
-const API = 'api/FoodVendor/FoodVendors';
+const API = 'https://opendata.vancouver.ca/api/records/1.0/search/?dataset=food-vendors&rows=40';
 
 export class FetchData extends Component {
     static displayName = FetchData.name;
@@ -44,20 +19,10 @@ export class FetchData extends Component {
         fetch(API)
             .then(response => response.json())
             .then(data => {
-                this.setState({ foodVendors: data, loading: false, nameSort: 'asc', descriptionSort: 'asc' });
+                this.setState({ foodVendors: data.records, loading: false, nameSort: 'asc', descriptionSort: 'desc' });
             });
+        
         this.onChangePage = this.onChangePage.bind(this);
-    }
-
-    markerClickHandler(foodVendor) {
-        fetch('api/FoodVendor/FoodVendor', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(foodVendor)
-        })
-            .then(response => { console.log(response); })
     }
 
     onChangePage(pageOfItems) {
@@ -68,32 +33,44 @@ export class FetchData extends Component {
     onSortChange(sortParam) {
         let sortedVendors;
         if (sortParam === 'name') {
+            console.log("name")
             if (this.state.nameSort === 'asc') {
                 this.setState({ nameSort: 'desc', description: 'asc' });
+                console.log(this.state.foodVendors)
                 sortedVendors = this.state.foodVendors.sort(function (a, b) {
-                    return (a.business_name === null) - (b.business_name === null) || +(a.business_name > b.business_name) || -(a.business_name < b.business_name)
+                    return (a.fields.business_name === null)
+                        - (b.fields.business_name === null) ||
+                        +(a.fields.business_name > b.fields.business_name) ||
+                        -(a.fields.business_name < b.fields.business_name)
                 });
             } else {
                 this.setState({ nameSort: 'asc', description: 'asc' });
                 sortedVendors = this.state.foodVendors.sort(function (a, b) {
-                    return (a.business_name === null) - (b.business_name === null) || -(a.business_name > b.business_name) || +(a.business_name < b.business_name)
+                    return (a.fields.business_name === null) - (b.fields.business_name === null) ||
+                        -(a.fields.business_name > b.fields.business_name) ||
+                        +(a.fields.business_name < b.fields.business_name)
                 });
             }
         } else {
+            console.log("description")
             if (this.state.description === 'asc') {
                 this.setState({ nameSort: 'asc', description: 'desc' });
                 sortedVendors = this.state.foodVendors.sort(function (a, b) {
-                    return (a.description === null) - (b.description === null) || +(a.description > b.description) || -(a.description < b.description)
+                    return (a.fields.description === null) - (b.fields.description === null) ||
+                        +(a.fields.description > b.fields.description) ||
+                        -(a.fields.description < b.fields.description)
                 });
             } else {
                 this.setState({ nameSort: 'asc', description: 'asc' });
                 sortedVendors = this.state.foodVendors.sort(function (a, b) {
-                    return (a.description === null) - (b.description === null) || -(a.description > b.description) || +(a.description < b.description)
+                    return (a.fields.description === null) - (b.fields.description === null) ||
+                        -(a.fields.description > b.fields.description) || +(a.fields.description < b.fields.description)
                 });
             }
         }
 
         this.setState({ foodVendors: sortedVendors });
+        console.log(sortedVendors)
     }
 
     renderFoodVendorsTable(foodVendors) {
@@ -102,18 +79,19 @@ export class FetchData extends Component {
                 <thead>
                     <tr>
                         <th onClick={() => this.onSortChange('name')}>Name</th>
-                        <th onClick={() => this.onSortChange('description')}>Description</th>
-                        <th>Longitude</th>
-                        <th>Latitude</th>
+                        <th onClick={() =>
+                            this.onSortChange('description')}>Description</th>
+                        <th>Local Area</th>
+                        <th>Location</th>
                     </tr>
                 </thead>
                 {this.state.pageOfItems.map(vendor =>
                     <tbody>
-                        <tr key={vendor.key}>
-                            <td>{vendor.business_name}</td>
-                            <td>{vendor.description}</td>
-                            <td>{vendor.longitude}</td>
-                            <td>{vendor.latitude}</td>
+                        <tr key={vendor.fields.key}>
+                            <td>{vendor.fields.business_name}</td>
+                            <td>{vendor.fields.description}</td>
+                            <td>{vendor.fields.geo_localarea}</td>
+                            <td>{vendor.fields.location}</td>
                         </tr>
                     </tbody>
                 )}
@@ -131,16 +109,7 @@ export class FetchData extends Component {
         return (
             <div>
                 <h1>Food Vendors</h1>
-                <WrappedMap
-                    foodVendors={this.state.foodVendors}
-                    markerClickHandler={this.markerClickHandler}
-
-
-                    googleMapURL={`https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_API_KEY}`}
-                    loadingElement={<div style={{ height: '100%' }} />}
-                    containerElement={<div style={{ height: '400px' }} />}
-                    mapElement={<div style={{ height: '100%' }} />}
-                />
+                
                 {contents}
             </div>
         );
